@@ -1,0 +1,55 @@
+{
+  "name": "n8n-nodes-bulktemplates",
+  "version": "1.0.0",
+  "description": "n8n community node for BulkTemplates — render branded images from templates via n8n workflows",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n-nodes",
+    "image",
+    "templates",
+    "rendering",
+    "social-media",
+    "automation",
+    "png",
+    "bulk",
+    "branding"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/azeemkafridi/n8n-nodes-bulktemplates",
+  "author": {
+    "name": "BulkTemplates",
+    "email": "n8n@bulktemplates.com",
+    "url": "https://bulktemplates.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/azeemkafridi/n8n-nodes-bulktemplates"
+  },
+  "main": "dist/nodes/BulkTemplates/BulkTemplates.node.js",
+  "scripts": {
+    "build": "tsc && gulp build:icons",
+    "lint": "eslint nodes/**/*.ts credentials/**/*.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/BulkTemplatesApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/BulkTemplates/BulkTemplates.node.js"
+    ]
+  },
+  "peerDependencies": {
+    "n8n-workflow": ">=1.0.0"
+  },
+  "devDependencies": {
+    "n8n-workflow": "^1.0.0",
+    "typescript": "^5.5.0",
+    "gulp": "^5.0.0",
+    "@types/node": "^22.0.0"
+  },
+  "files": [
+    "dist"
+  ]
+}
