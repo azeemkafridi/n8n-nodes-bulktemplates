@@ -38,6 +38,7 @@ export class BulkTemplates implements INodeType {
           { name: 'Template', value: 'template' },
           { name: 'Render', value: 'render' },
           { name: 'Batch', value: 'batch' },
+          { name: 'Screenshot', value: 'screenshot' },
         ],
         default: 'render',
       },
@@ -118,6 +119,24 @@ export class BulkTemplates implements INodeType {
           },
         ],
         default: 'submit',
+      },
+
+      // ── Screenshot operations ──
+      {
+        displayName: 'Operation',
+        name: 'operation',
+        type: 'options',
+        noDataExpression: true,
+        displayOptions: { show: { resource: ['screenshot'] } },
+        options: [
+          {
+            name: 'Capture',
+            value: 'capture',
+            description: 'Capture a screenshot of a live URL',
+            action: 'Capture a screenshot',
+          },
+        ],
+        default: 'capture',
       },
 
       // ── Template: get ──
@@ -244,6 +263,95 @@ export class BulkTemplates implements INodeType {
         required: true,
         displayOptions: { show: { resource: ['batch'], operation: ['downloadFile'] } },
         description: 'Name of the binary property to store the downloaded PNG in',
+      },
+
+      // ── Screenshot: capture ──
+      {
+        displayName: 'URL',
+        name: 'screenshotUrl',
+        type: 'string',
+        default: '',
+        required: true,
+        displayOptions: { show: { resource: ['screenshot'], operation: ['capture'] } },
+        description: 'The URL to capture',
+      },
+      {
+        displayName: 'Viewport Width',
+        name: 'viewportWidth',
+        type: 'number',
+        default: 1280,
+        displayOptions: { show: { resource: ['screenshot'], operation: ['capture'] } },
+        description: 'Viewport width in pixels (100-3840)',
+      },
+      {
+        displayName: 'Viewport Height',
+        name: 'viewportHeight',
+        type: 'number',
+        default: 800,
+        displayOptions: { show: { resource: ['screenshot'], operation: ['capture'] } },
+        description: 'Viewport height in pixels (100-3840)',
+      },
+      {
+        displayName: 'Format',
+        name: 'format',
+        type: 'options',
+        default: 'png',
+        displayOptions: { show: { resource: ['screenshot'], operation: ['capture'] } },
+        options: [
+          { name: 'PNG', value: 'png' },
+          { name: 'JPEG', value: 'jpeg' },
+          { name: 'WebP', value: 'webp' },
+        ],
+        description: 'Output image format',
+      },
+      {
+        displayName: 'Full Page',
+        name: 'fullPage',
+        type: 'boolean',
+        default: false,
+        displayOptions: { show: { resource: ['screenshot'], operation: ['capture'] } },
+        description: 'Capture the entire scrollable page (Business plan only)',
+      },
+      {
+        displayName: 'CSS Selector',
+        name: 'selector',
+        type: 'string',
+        default: '',
+        displayOptions: { show: { resource: ['screenshot'], operation: ['capture'] } },
+        description: 'CSS selector to capture only a specific element',
+      },
+      {
+        displayName: 'Block Ads',
+        name: 'blockAds',
+        type: 'boolean',
+        default: true,
+        displayOptions: { show: { resource: ['screenshot'], operation: ['capture'] } },
+        description: 'Block ad networks in the capture',
+      },
+      {
+        displayName: 'Block Trackers',
+        name: 'blockTrackers',
+        type: 'boolean',
+        default: true,
+        displayOptions: { show: { resource: ['screenshot'], operation: ['capture'] } },
+        description: 'Block analytics and tracking scripts',
+      },
+      {
+        displayName: 'Block Cookie Banners',
+        name: 'blockCookieBanners',
+        type: 'boolean',
+        default: true,
+        displayOptions: { show: { resource: ['screenshot'], operation: ['capture'] } },
+        description: 'Automatically dismiss cookie consent banners',
+      },
+      {
+        displayName: 'Output Binary Property',
+        name: 'binaryProperty',
+        type: 'string',
+        default: 'data',
+        required: true,
+        displayOptions: { show: { resource: ['screenshot'], operation: ['capture'] } },
+        description: 'Name of the binary property to store the screenshot image in',
       },
     ],
   };
@@ -384,6 +492,61 @@ export class BulkTemplates implements INodeType {
 
             returnData.push({
               json: { jobId, fileName },
+              binary: { [binaryProperty]: binaryData },
+              pairedItem: { item: i },
+            });
+          }
+
+        // ── Screenshot ──
+        } else if (resource === 'screenshot') {
+          if (operation === 'capture') {
+            const screenshotUrl = this.getNodeParameter('screenshotUrl', i) as string;
+            const viewportWidth = this.getNodeParameter('viewportWidth', i) as number;
+            const viewportHeight = this.getNodeParameter('viewportHeight', i) as number;
+            const format = this.getNodeParameter('format', i) as string;
+            const fullPage = this.getNodeParameter('fullPage', i) as boolean;
+            const selector = this.getNodeParameter('selector', i) as string;
+            const blockAds = this.getNodeParameter('blockAds', i) as boolean;
+            const blockTrackers = this.getNodeParameter('blockTrackers', i) as boolean;
+            const blockCookieBanners = this.getNodeParameter('blockCookieBanners', i) as boolean;
+            const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+
+            const body: IDataObject = {
+              url: screenshotUrl,
+              viewport_width: viewportWidth,
+              viewport_height: viewportHeight,
+              format,
+              full_page: fullPage,
+              block_ads: blockAds,
+              block_trackers: blockTrackers,
+              block_cookie_banners: blockCookieBanners,
+            };
+
+            if (selector) {
+              body.selector = selector;
+            }
+
+            const imageBuffer = await this.helpers.request({
+              method: 'POST',
+              url: `${BASE_URL}/api/screenshot`,
+              headers: {
+                'x-api-key': apiKey,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(body),
+              encoding: null,
+            }) as Buffer;
+
+            const mimeType = format === 'jpeg' ? 'image/jpeg' : format === 'webp' ? 'image/webp' : 'image/png';
+            const filename = `screenshot.${format}`;
+            const binaryData = await this.helpers.prepareBinaryData(
+              Buffer.from(imageBuffer),
+              filename,
+              mimeType,
+            );
+
+            returnData.push({
+              json: { success: true, url: screenshotUrl, filename },
               binary: { [binaryProperty]: binaryData },
               pairedItem: { item: i },
             });
